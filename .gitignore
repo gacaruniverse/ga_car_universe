@@ -1,0 +1,22 @@
+# ============================================================
+# GA CAR UNIVERSE — .gitignore
+# ============================================================
+
+# Never commit secrets
+.env
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Uploaded user files
+static/uploads/
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db

@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="icon" type="logo" href="{{ url_for('static', filename='images/logo.png')}}">
+    <script>
+
+history.pushState(null, "", location.href);
+
+window.addEventListener("popstate", function () {
+
+    if(location.pathname==="/user"){
+
+        window.location.replace("/");
+
+    }
+
+});
+
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GA CAR UNIVERSE</title>
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/user.css') }}">
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet"
+href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+</head>
+
+<body>
+
+<div class="bg-animation"></div>
+
+<header>
+
+<div class="profile-section" onclick="openProfile()">
+
+    <div class="profile-img">
+        <img src="{{ url_for('static', filename='images/profile.jpg') }}">
+    </div>
+
+    <p>Profile</p>
+
+</div>
+
+<button id="myCartBtn"
+        class="my-cart-btn"
+        onclick="openCart()">
+
+    <i class="fa-solid fa-cart-shopping"></i>
+
+    My Cart (<span id="cartCount">0</span>)
+
+</button>
+
+<h1>GA CAR UNIVERSE</h1>
+
+<div class="right-side">
+
+<button class="logout" onclick="logoutUser()">
+    <i class="fa-solid fa-right-from-bracket"></i>
+    Logout
+</button>
+
+<div class="menu">
+<i class="fa-solid fa-bars"></i>
+</div>
+
+</div>
+
+</header>
+
+<!-- Sidebar — direct child of body so z-index:99999 beats the overlay (99998) -->
+<div id="sideMenu" class="side-menu">
+
+    <span class="close-menu" onclick="closeMenu()">&times;</span>
+
+    <a href="javascript:void(0)" onclick="goToCart()">
+        <i class="fa-solid fa-cart-shopping"></i>
+        Cart
+    </a>
+
+    <a href="javascript:void(0)" onclick="openOrders()">
+        <i class="fa-solid fa-box"></i>
+        My Orders
+    </a>
+
+    <a href="javascript:void(0)" onclick="openTermsModal()">
+        <i class="fa-solid fa-file-contract"></i>
+        Terms &amp; Conditions
+    </a>
+
+    <a href="javascript:void(0)" onclick="openContactModal()">
+        <i class="fa-solid fa-phone"></i>
+        Contact Us
+    </a>
+
+</div>
+<!-- Tabs Navigation for All Cars vs Wishlist -->
+<div class="tabs-navigation" style="margin: 20px 45px 0;">
+    <button class="tab-pill active" id="tabAllCars" onclick="switchProductTab('all')">
+        <i class="fa-solid fa-car-side"></i> All Cars
+    </button>
+    <button class="tab-pill" id="tabWishlist" onclick="switchProductTab('wishlist')">
+        <i class="fa-solid fa-heart"></i> My Wishlist
+    </button>
+</div>
+
+<div class="filter-bar">
+
+    <input
+    type="text"
+    id="searchInput"
+    placeholder="Search Car Name..."
+    onkeyup="filterProducts()">
+
+    <select
+    id="categoryFilter"
+    onchange="filterProducts()">
+
+        <option value="">All Categories</option>
+
+        {% for cat in categories %}
+
+        <option value="{{ cat.category }}">
+            {{ cat.category }}
+        </option>
+
+        {% endfor %}
+
+    </select>
+
+    <select id="sortFilter" onchange="filterProducts()">
+        <option value="newest">Sort: Newest</option>
+        <option value="price-asc">Price: Low to High</option>
+        <option value="price-desc">Price: High to Low</option>
+        <option value="rating">Top Rated</option>
+    </select>
+
+    <select id="stockFilter" onchange="filterProducts()">
+        <option value="all">Availability: All</option>
+        <option value="instock">Availability: In Stock</option>
+    </select>
+
+</div>
+<section id="cart" class="products">
+
+{% for product in products %}
+
+<div class="card"
+     data-id="{{ product.id }}"
+     data-name="{{ product.car_name|lower }}"
+     data-category="{{ product.category|lower }}"
+     data-price="{{ product.price }}"
+     data-rating="{{ product.avg_rating }}"
+     data-stock="{{ product.stock }}"
+     onclick="openProduct({{ product.id }})">
+
+    <!-- Wishlist Heart Button Overlay -->
+    <button class="wishlist-heart-btn" onclick="toggleWishlist(event, {{ product.id }})" id="wl-btn-{{ product.id }}">
+        <i class="fa-regular fa-heart"></i>
+    </button>
+
+    <img src="{{ url_for('static', filename=product.image_path) }}">
+
+    <h2>{{ product.car_name }}</h2>
+
+    <div>₹{{ product.price }}</div>
+
+    <p>{{ product.category }}</p>
+    
+    {% if product.stock|int <= 0 %}
+    <span class="out-of-stock-badge" style="background: #ff3366; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; position: absolute; bottom: 15px; right: 15px;">Out of Stock</span>
+    {% endif %}
+
+</div>
+
+{% endfor %}
+
+</section>
+
+
+
+<!-- ========================= -->
+<!-- Profile Modal -->
+<!-- ========================= -->
+
+<div id="profileModal" class="profile-modal">
+
+    <div class="profile-box">
+
+        <span class="close-btn" onclick="closeProfile()">&times;</span>
+
+        <h2>My Profile</h2>
+
+        <form action="/update_profile" method="POST">
+
+            <label>Username</label>
+
+            <input
+                type="text"
+                value="{{ user.username }}"
+                readonly
+            >
+
+            <label>WhatsApp</label>
+
+<div class="whatsapp-box">
+
+    <input
+        type="text"
+        id="whatsapp"
+        name="whatsapp"
+        value="{{ user.whatsapp or '' }}"
+        readonly
+        required
+    >
+
+    <button
+    type="button"
+    id="whatsappBtn"
+    class="edit-btn"
+    onclick="editWhatsapp()">
+
+    <i class="fa-solid fa-pen"></i>
+    <span>Edit</span>
+
+</button>
+
+</div>
+
+            <hr>
+            <div class="address-header">
+
+    <h3>Delivery Address</h3>
+
+    <button
+        type="button"
+        class="edit-btn"
+        onclick="toggleAddress()">
+
+        <i class="fa-solid fa-pen"></i> Edit
+
+    </button>
+
+</div>
+
+<div id="addressPreview">
+
+    <p><strong>{{ user.name or "No Name" }}</strong></p>
+
+    <p>
+        {{ user.door_no or "" }}
+        {{ user.street or "" }}
+    </p>
+
+    <p>{{ user.area or "" }}</p>
+
+    <p>
+        {{ user.city or "" }},
+        {{ user.state or "" }}
+        {{ user.pincode or "" }}
+    </p>
+
+</div>
+
+            <div id="addressForm" style="display:none;">
+
+            <label>Name</label>
+
+            <input
+                type="text"
+                name="name"
+                value="{{ user.name or '' }}"
+            >
+
+            <label>Door No</label>
+
+            <input
+                type="text"
+                name="door_no"
+                value="{{ user.door_no or '' }}"
+            >
+
+            <label>Street</label>
+
+            <input
+                type="text"
+                name="street"
+                value="{{ user.street or '' }}"
+            >
+
+            <label>Area</label>
+
+            <input
+                type="text"
+                name="area"
+                value="{{ user.area or '' }}"
+            >
+
+            <label>City</label>
+
+            <input
+                type="text"
+                name="city"
+                value="{{ user.city or '' }}"
+            >
+
+            <label>State</label>
+
+            <input
+                type="text"
+                name="state"
+                value="{{ user.state or '' }}"
+            >
+
+            <label>Pin Code</label>
+
+            <input
+                type="text"
+                name="pincode"
+                value="{{ user.pincode or '' }}"
+            >
+
+            <button
+                type="submit"
+                class="save-btn">
+
+                Save Changes
+
+            </button>
+            </div>
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+<!-- Full Screen Contact Modal -->
+<div id="contactModal" class="contact-full-modal">
+    <span class="close-contact-btn" onclick="closeContactModal()">&times;</span>
+    
+    <div class="contact-section">
+        <h2>CONTACT US</h2>
+        
+        <p class="contact-notes">
+            To confirm your order and complete your payment,
+            please contact us using any one of the methods below.
+        </p>
+        
+        <div class="contact-buttons">
+            <a href="https://wa.me/918056964818" class="whatsapp-btn" target="_blank">
+                <i class="fa-brands fa-whatsapp"></i> WhatsApp
+            </a>
+            
+            <!-- Instagram button correct link-oda -->
+            <a href="https://www.instagram.com/gacaruniverse?utm_source=qr&igsh=dGFvM2ZpM2hrc3ds" class="instagram-btn" target="_blank">
+                <i class="fa-brands fa-instagram"></i> Instagram
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Full Screen Terms Modal -->
+<!-- Full Screen Terms Modal -->
+<div id="termsModal" class="contact-full-modal">
+    <span class="close-contact-btn" onclick="closeTermsModal()">&times;</span>
+
+    <div class="terms-container">
+
+        <h1>Terms & Conditions</h1>
+
+        <p class="intro">
+            Welcome to <strong>GA CAR UNIVERSE</strong>. By placing an order through
+            our website, you agree to the following Terms and Conditions.
+            Please read them carefully before making a purchase.
+        </p>
+
+        <div class="terms-card">
+            <h2>1. Acceptance of Terms</h2>
+            <p>
+                By using our website and placing an order, you acknowledge that
+                you have read, understood, and agreed to comply with these Terms
+                and Conditions.
+            </p>
+        </div>
+
+        <div class="terms-card">
+            <h2>2. Orders & Payments</h2>
+
+            <div class="warning-box">
+                <i class="fa-solid fa-circle-exclamation"></i>
+                Cash on Delivery (COD) is NOT available.
+            </div>
+
+            <p>
+                GA CAR UNIVERSE accepts <strong>Prepaid Orders Only.</strong>
+                Orders will be processed only after payment verification.
+            </p>
+
+            <ul>
+                <li>Contact us through WhatsApp or Instagram.</li>
+                <li>Share your Order ID while making payment.</li>
+                <li>Payment must be verified before shipping.</li>
+            </ul>
+        </div>
+
+        <div class="terms-card">
+            <h2>3. Shipping & Courier</h2>
+
+            <ul>
+                <li>We currently don't have an official courier partner.</li>
+                <li>Orders are shipped through ST Courier or Professional Couriers.</li>
+                <li>Courier service depends on your location.</li>
+                <li>Delivery times may vary due to holidays or courier delays.</li>
+            </ul>
+        </div>
+
+        <div class="terms-card">
+            <h2>4. Tracking Your Order</h2>
+
+            <p>
+                After shipment, your Courier Tracking ID will be updated in
+                <strong>My Orders</strong>.
+            </p>
+        </div>
+
+        <div class="terms-card">
+            <h2>5. Delivery Confirmation</h2>
+
+            <ul>
+                <li>Take a clear photo after receiving your package.</li>
+                <li>Send the photo through WhatsApp for confirmation.</li>
+            </ul>
+        </div>
+
+        <div class="terms-card">
+            <h2>6. Refund / Return Policy</h2>
+
+            <div class="danger-box">
+                <strong>NO REFUNDS</strong><br>
+                <strong>NO RETURNS</strong><br>
+                <strong>NO REPLACEMENTS</strong>
+            </div>
+
+            <p>
+                Please verify your order before making payment.
+            </p>
+        </div>
+
+        <div class="terms-card">
+            <h2>7. Customer Responsibility</h2>
+
+            <ul>
+                <li>Provide correct delivery information.</li>
+                <li>Share the correct Order ID.</li>
+                <li>Track your shipment.</li>
+                <li>Inspect the package immediately.</li>
+                <li>Send delivery confirmation through WhatsApp.</li>
+            </ul>
+        </div>
+
+        <div class="terms-card">
+            <h2>8. Contact Information</h2>
+
+            <p>
+                For payment confirmation and order support,
+                contact us via <strong>WhatsApp</strong> or
+                <strong>Instagram</strong>.
+            </p>
+        </div>
+
+        <div class="terms-card">
+            <h2>9. Changes to Terms</h2>
+
+            <p>
+                GA CAR UNIVERSE reserves the right to modify these Terms &
+                Conditions without prior notice.
+            </p>
+        </div>
+
+        <div class="agree-box">
+            By placing an order with
+            <strong>GA CAR UNIVERSE</strong>,
+            you confirm that you have read,
+            understood and agreed to these Terms & Conditions.
+        </div>
+
+    </div>
+</div>
+
+<div id="productModal" class="product-modal">
+    <div class="product-content">
+        <span class="cart-close-btn" onclick="closeProduct()">&times;</span>
+        
+        <!-- Left side: Image and shopping controls -->
+        <div class="product-modal-left">
+            <img id="modalImage" style="cursor: zoom-in;" onclick="zoomModalImage()">
+            <input type="hidden" id="productId">
+            
+            <h2 id="modalName" style="margin-top: 10px; color: #ffd500; font-size: 1.6rem; letter-spacing: 1px;"></h2>
+            <h3 id="modalPrice" style="color: #fff; margin-bottom: 10px;"></h3>
+            
+            <div id="modalRatingBadge" class="rating-badge" style="margin-bottom: 15px;">
+                <i class="fa-solid fa-star"></i>
+                <span id="modalRatingVal">0.0</span>
+                <span style="color: #666; font-size: 0.8rem; margin-left: 4px;">(<span id="modalRatingCount">0</span> reviews)</span>
+            </div>
+            
+            <div id="modalStockStatus" style="font-weight: 600; margin-bottom: 15px; font-size: 0.9rem;"></div>
+
+            <button id="cartBtn" class="cart-btn" onclick="addToCart()" style="width: 100%; max-width: 250px;">
+                <i class="fa-solid fa-cart-shopping"></i> Add To Cart
+            </button>
+
+            <div id="qtyBox" class="qty-box" style="display:none; margin: 10px auto;">
+                <button type="button" onclick="decreaseQty()">-</button>
+                <span id="qtyValue">1</span>
+                <button type="button" onclick="increaseQty()">+</button>
+            </div>
+
+            <button id="confirmBtn" class="confirm-btn" onclick="confirmProduct()" style="display:none; width: 100%; max-width: 250px;">
+                Confirm
+            </button>
+        </div>
+        
+        <!-- Right side: Specifications and reviews -->
+        <div class="product-modal-right">
+            <h3 style="color: #ffd500; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px; font-size: 1.1rem; letter-spacing: 1px;">SPECIFICATIONS</h3>
+            <table class="specs-table">
+                <tr class="specs-row"><td class="spec-name">Brand</td><td id="specBrand" class="spec-val">-</td></tr>
+                <tr class="specs-row"><td class="spec-name">Scale</td><td id="specScale" class="spec-val">-</td></tr>
+                <tr class="specs-row"><td class="spec-name">Material</td><td id="specMaterial" class="spec-val">-</td></tr>
+                <tr class="specs-row"><td class="spec-name">Category</td><td id="specCategory" class="spec-val">-</td></tr>
+            </table>
+            
+            <h3 style="color: #ffd500; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px; margin-top: 15px; font-size: 1.1rem; letter-spacing: 1px;">DESCRIPTION</h3>
+            <p id="specDescription" style="font-size: 0.9rem; line-height: 1.5; color: #ccc; min-height: 40px; margin-top: 5px;"></p>
+            
+            <div class="reviews-container">
+                <h3 style="color: #ffd500; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px; display: flex; justify-content: space-between; font-size: 1.1rem; letter-spacing: 1px;">
+                    <span>REVIEWS</span>
+                    <button onclick="toggleReviewForm()" style="background: transparent; border: none; color: #ffd500; font-size: 0.85rem; cursor: pointer; text-decoration: underline;">Write a Review</button>
+                </h3>
+                
+                <!-- Review submission form -->
+                <div id="addReviewForm" class="add-review-form" style="display: none;">
+                    <h4>Share Your Review</h4>
+                    <div style="display: flex; align-items: center; gap: 10px; margin-top: 5px;">
+                        <span style="font-size: 0.85rem; color: #888;">Your Rating:</span>
+                        <div class="star-selector" id="reviewStarSelector">
+                            <i class="fa-solid fa-star active" data-rating="1" onclick="setReviewRating(1)"></i>
+                            <i class="fa-solid fa-star active" data-rating="2" onclick="setReviewRating(2)"></i>
+                            <i class="fa-solid fa-star active" data-rating="3" onclick="setReviewRating(3)"></i>
+                            <i class="fa-solid fa-star active" data-rating="4" onclick="setReviewRating(4)"></i>
+                            <i class="fa-solid fa-star active" data-rating="5" onclick="setReviewRating(5)"></i>
+                        </div>
+                    </div>
+                    <textarea id="reviewText" class="review-input-box" placeholder="Write details about this car..."></textarea>
+                    <button class="submit-review-btn" onclick="submitReview()">Submit Review</button>
+                </div>
+                
+                <!-- List of reviews -->
+                <div id="reviewsList" style="margin-top: 15px; max-height: 200px; overflow-y: auto;">
+                    <p class="no-reviews" style="font-size: 0.85rem; color: #666; font-style: italic;">No reviews yet. Be the first to review!</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===========================
+        MY CART MODAL
+=========================== -->
+
+<div id="cartModal" class="cart-modal">
+
+    <div class="cart-content">
+
+        <span class="cart-close-btn" onclick="closeCart()">&times;</span>
+
+        <!-- TITLE -->
+        <h2 class="cart-title">MY CART</h2>
+
+        <!-- USER -->
+        <h3 class="cart-username">
+            {{ user.username }}
+        </h3>
+
+        <!-- ===========================
+             WHATSAPP
+        ============================ -->
+        <div class="cart-section">
+            <label><i class="fa-brands fa-whatsapp" style="color:#25d366; margin-right:8px;"></i>WhatsApp Number</label>
+            <div class="cart-wa-box">
+                <div class="wa-icon"><i class="fa-solid fa-phone"></i></div>
+                <input
+                    type="text"
+                    id="cartWhatsapp"
+                    name="whatsapp"
+                    value="{{ user.whatsapp or '' }}"
+                    readonly
+                    placeholder="Enter WhatsApp number">
+                <button
+                    type="button"
+                    id="cartWhatsappBtn"
+                    class="cart-edit-btn"
+                    onclick="editCartWhatsapp()">
+                    <i class="fa-solid fa-pen"></i> Edit
+                </button>
+            </div>
+        </div>
+
+        <!-- ===========================
+             ADDRESS
+        ============================ -->
+        <div class="cart-section">
+            <label><i class="fa-solid fa-location-dot" style="color:#ffd500; margin-right:8px;"></i>Delivery Address</label>
+            <div class="cart-addr-card">
+
+                <!-- Preview -->
+                <div id="cartAddressPreview" class="addr-preview">
+                    <div class="addr-name"><strong>{{ user.name or 'No Name Set' }}</strong></div>
+                    <div class="addr-line">{{ user.door_no or '' }}{% if user.door_no %}, {% endif %}{{ user.street or '' }}</div>
+                    <div class="addr-line">{{ user.area or '' }}</div>
+                    <div class="addr-line">{{ user.city or '' }}{% if user.state %}, {{ user.state }}{% endif %}{% if user.pincode %} - {{ user.pincode }}{% endif %}</div>
+                </div>
+
+                <button
+                    type="button"
+                    id="cartAddressBtn"
+                    class="cart-edit-btn addr-edit-btn"
+                    onclick="toggleCartAddress()">
+                    <i class="fa-solid fa-pen"></i> Edit Address
+                </button>
+
+                <!-- Form -->
+                <form
+                    id="cartAddressForm"
+                    action="/update_address"
+                    method="POST"
+                    onsubmit="saveCartAddress(event)"
+                    style="display:none;">
+
+                    <div class="addr-form-grid">
+                        <div class="addr-field full">
+                            <label>Full Name</label>
+                            <input type="text" name="name" value="{{ user.name or '' }}" placeholder="Full Name">
+                        </div>
+                        <div class="addr-field">
+                            <label>Door No</label>
+                            <input type="text" name="door_no" value="{{ user.door_no or '' }}" placeholder="Door No">
+                        </div>
+                        <div class="addr-field">
+                            <label>Street</label>
+                            <input type="text" name="street" value="{{ user.street or '' }}" placeholder="Street">
+                        </div>
+                        <div class="addr-field">
+                            <label>Area</label>
+                            <input type="text" name="area" value="{{ user.area or '' }}" placeholder="Area">
+                        </div>
+                        <div class="addr-field">
+                            <label>City</label>
+                            <input type="text" name="city" value="{{ user.city or '' }}" placeholder="City">
+                        </div>
+                        <div class="addr-field">
+                            <label>State</label>
+                            <input type="text" name="state" value="{{ user.state or '' }}" placeholder="State">
+                        </div>
+                        <div class="addr-field">
+                            <label>Pincode</label>
+                            <input type="text" name="pincode" value="{{ user.pincode or '' }}" placeholder="Pincode">
+                        </div>
+                    </div>
+
+                    <div style="display:flex; gap:10px; margin-top:15px;">
+                        <button type="submit" class="cart-save-btn"><i class="fa-solid fa-check"></i> Save Address</button>
+                        <button type="button" class="cart-cancel-btn" onclick="toggleCartAddress()"><i class="fa-solid fa-xmark"></i> Cancel</button>
+                    </div>
+
+                </form>
+
+            </div>
+        </div>
+
+        <!-- ===========================
+             CART TABLE
+        ============================ -->
+
+        <table class="cart-table">
+
+            <thead>
+
+                <tr>
+
+                    <th>Image</th>
+                    <th>Name</th>
+                    <th>Category</th>
+                    <th>Qty</th>
+                    <th>Price</th>
+
+                </tr>
+
+            </thead>
+
+            <tbody id="cartBody">
+
+            </tbody>
+
+        </table>
+
+        <!-- ===========================
+             TOTAL
+        ============================ -->
+
+        <div class="cart-total-box">
+
+            <h3>
+                Shipping : ₹100
+            </h3>
+
+            <h2>
+                Total : ₹<span id="cartTotal">0</span>
+            </h2>
+
+        </div>
+
+        <!-- ===========================
+             ORDER BUTTON
+        ============================ -->
+
+        <button
+            class="cart-btn"
+            onclick="placeOrder()">
+
+            Order
+
+        </button>
+
+    </div>
+
+</div>
+
+<div id="ordersModal" class="orders-modal">
+
+    <div class="orders-content">
+
+        <span class="cart-close-btn" onclick="closeOrders()">&times;</span>
+
+        <h2>MY ORDERS</h2>
+
+        <div id="ordersContainer"></div>
+
+    </div>
+
+</div>
+<div id="imageViewer" class="image-viewer">
+
+    <span class="close-image"
+    onclick="closeImageViewer()">
+
+        &times;
+
+    </span>
+
+    <img
+    id="viewerImage"
+    ondblclick="toggleZoom()">
+
+</div>
+
+<script src="{{ url_for('static', filename='js/user.js') }}"></script>
+
+<!-- Flash Messages to Toast Converter -->
+{% with messages = get_flashed_messages() %}
+  {% if messages %}
+    <script>
+      window.addEventListener('DOMContentLoaded', () => {
+        {% for message in messages %}
+          showToast("{{ message }}", "info");
+        {% endfor %}
+      });
+    </script>
+  {% endif %}
+{% endwith %}
+
+</body>
+</html>
